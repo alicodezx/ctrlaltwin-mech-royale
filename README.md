@@ -95,9 +95,9 @@ protocol compliance and latency, not skill.
 ## Status
 
 - Protocol conformance: PASS — 300/300 answered, 0 missed, 0 wrong ticks, 0 bad lines.
-- Decision time on the development machine: p50 ≈ 1.6–2.0 ms, p90 ≈ 3.8–5.7 ms,
-  p99 ≈ 9–12 ms, typical max < 20 ms against the 50 ms budget.
-- World model init: ≈ 1.7–3.2 s of the 20 s readiness window.
+- Decision time on the development machine (three sequential checker runs): p50 ≈ 1.0–1.5 ms,
+  p90 ≈ 1.4–2.7 ms, p99 ≈ 2.7–4.9 ms, max ≤ 6.5 ms against the 50 ms budget.
+- World model init: ≈ 1.1–2.2 s of the 20 s readiness window.
 - Gameplay strength is **not** claimed here. Scores come from the 48 practice matches run by the
   scorer; `REPORT.md` lists what has and has not been verified.
 

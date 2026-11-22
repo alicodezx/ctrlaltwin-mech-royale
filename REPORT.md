@@ -19,30 +19,35 @@ match container is 1 CPU and may differ.
 | Late answers | 0 | 0 |
 | Wrong tick / bad lines | 0 / 0 | 0 / 0 |
 | Dropped older queued observations | 0 | 0 |
-| Ready time | ≈ 0.15 s | ≈ 1.7–3.2 s (world model build) |
-| Answer p50 | 1.4 ms | 1.6–2.0 ms |
-| Answer p90 | 2.4 ms | 3.8–5.7 ms |
-| Answer p99 | 3.7 ms | 8.7–11.8 ms (one noisy run: 18.9) |
-| Answer max | 4.4 ms | 9.2–17.3 ms (same noisy run: 70.4) |
+| Ready time | ≈ 0.15 s | ≈ 1.1–2.2 s (world model build) |
+| Answer p50 | 1.4 ms | 1.0–1.5 ms |
+| Answer p90 | 2.4 ms | 1.4–2.7 ms |
+| Answer p99 | 3.7 ms | 2.7–4.9 ms |
+| Answer max | 4.4 ms | 3.4–6.5 ms |
 | Debug drawings | 308 (under caps) | 0 (debug drawing not used) |
 | Protocol wrapper | unmodified | same file, byte-identical |
 | Entry point | `example_bot.py` | `bot.py` |
 
-The single noisy run (p99 18.9, max 70.4 ms) still reported 0 missed and 0 late answers, so the
-spike is host scheduling, not a missed deadline. Two back-to-back reruns produced p99 8.7 / 11.8 ms
-and max 9.2 / 17.3 ms. No code path performs work proportional to match length.
+Those v1 numbers are from three sequential checker runs after the final latency work. Two fixes
+mattered: hold/retreat points are cached for 2 s keyed on zone geometry and mode (no per-decision
+position churn) with fast cover-shortlist LOS, and A* now has an 8 ms wall-clock safety valve plus
+a 650-expansion cap, returning the best partial path. In-process, hold recomputes dropped from 26
+to 13 per replay and p99 from 17.8 ms to 3.6–6.8 ms; a synthetic static-position case that forces
+repeated replans went from p99 16–32 ms to 7.6 ms. No code path performs work proportional to
+match length.
 
 Unit-test performance case (synthetic 100-decision sequence with mech, projectiles, loot, crate,
-drop and shrinking zone):
+drop, shrinking zone, and a static position that forces stuck replanning):
 
-- world init: ≈ 170–215 ms (synthetic flat/walled arenas)
-- p50 ≈ 0.9–1.4 ms, p90 ≈ 4.7–7.5 ms, p99 ≈ 7.8–11.3 ms, max ≈ 9.5–11.3 ms
+- world init: ≈ 158–238 ms (synthetic flat/walled arenas)
+- latest suite run: p50 ≈ 1.2 ms, p90 ≈ 3.3 ms, p99 ≈ 7.6 ms, max ≈ 7.6 ms
 - validator latency < 5 ms
 
-Recorded-stream profiling (300 non-reactive decisions): world init ≈ 1.73 s; p50 ≈ 0.4–0.6 ms,
-p90 ≈ 2.5–3.4 ms, p99 ≈ 7.5–8.3 ms. State distribution: HOLD 202, ENGAGE 73, LOOT 21,
-DISENGAGE 4; 49 firing decisions. No pickups were taken because the recorded stream contains no
-reachable loot, so loot/upgrade paths are covered only by synthetic unit tests.
+Recorded-stream profiling (300 non-reactive decisions, final build): world init ≈ 1.35 s;
+p50 ≈ 0.6–0.7 ms, p90 ≈ 1.8–2.2 ms, p99 ≈ 3.6–6.8 ms, max ≈ 4.1–9.0 ms. State distribution:
+HOLD 202, ENGAGE 73, LOOT 21, DISENGAGE 4; 49 firing decisions. No pickups were taken because the
+recorded stream contains no reachable loot, so loot/upgrade paths are covered only by synthetic
+unit tests.
 
 ## 2. Unit tests
 

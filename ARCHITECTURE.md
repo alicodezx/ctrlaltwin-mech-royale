@@ -127,11 +127,14 @@ caps (lines/points/text/chars/bytes). Any internal error returns a minimal valid
 
 ## Performance model
 
-- Map load once before `ready` (≈ 0.17 s synthetic grid build; ≈ 1.7–3.2 s wall clock in the
+- Map load once before `ready` (≈ 0.16–0.24 s synthetic grid build; ≈ 1.1–2.2 s wall clock in the
   subprocess incl. Python start and map parse).
-- Steady-state decision p50 ≈ 1.6–2.0 ms, p90 ≈ 3.8–5.7 ms, p99 ≈ 9–12 ms on the development
-  machine; A* is capped and only runs after the local steering reports stuck.
-- Hold/retreat point selection is cached briefly; threat LOS is limited to short candidate lists.
+- Steady-state decision p50 ≈ 1.0–1.5 ms, p90 ≈ 1.4–2.7 ms, p99 ≈ 2.7–4.9 ms, max ≤ 6.5 ms on the
+  development machine. A* is capped at 650 expansions **and** an 8 ms wall-clock budget; only the
+  best partial path is used when the budget expires, so navigation cannot blow the tick budget.
+- Hold/retreat point selection is cached for 2 s keyed on zone geometry and mode; cover shortlist
+  LOS uses the fast test. This removed the previous p99 tail (was dominated by exact LOS at every
+  hold recompute). Danger-field inflation is computed with a circular row-span loop.
 - No allocation-heavy loops per decision; the heaviest repeated work is cover-cell sampling,
   capped by stride.
 

@@ -136,13 +136,14 @@ class Navigator:
             return
         danger = None
         if threats:
-            danger = w.danger_field([(t.pos[0], t.pos[1]) for t in threats[:4]], radius=35.0, weight=2.2)
+            danger = w.danger_field([(t.pos[0], t.pos[1]) for t in threats[:4]], radius=28.0, weight=2.2)
         zc = None
         if p.zone is not None:
             c, r = p.zone.predicted_circle()
             zc = (c[0], c[1], r)
         self.path = w.find_path((p.pos[0], p.pos[1]), goal, danger=danger, zone=zc,
-                                max_expand=900, avoid=self.avoid, now=now)
+                                max_expand=650, avoid=self.avoid, now=now,
+                                time_budget=0.008)
         self.path_idx = 0
         self.path_goal = goal
         self.path_t = now
@@ -278,9 +279,8 @@ class Navigator:
         now = p.t
         c, r = zone.predicted_circle()
         next_key = (round(zone.next_center[0] / 20.0), round(zone.next_center[1] / 20.0),
-                    round(zone.next_radius / 20.0), mode,
-                    round(p.pos[0] / 20.0), round(p.pos[1] / 20.0))
-        if self._hold is not None and now - self._hold_t < 1.2 and self._hold_key == next_key:
+                    round(zone.next_radius / 20.0), mode)
+        if self._hold is not None and now - self._hold_t < 2.0 and self._hold_key == next_key:
             return self._hold
         w = self.world
         if not w.available:
@@ -293,7 +293,7 @@ class Navigator:
         ring_w = 0.55 if rr <= 150.0 else (0.30 if rr <= 260.0 else 0.10)
         cands: List[Tuple[float, float, bool]] = []
         cover = w.cover_cells
-        stride = max(1, len(cover) // 900)
+        stride = max(1, len(cover) // 700)
         for k in cover[::stride]:
             x = w.cell_x[k]
             y = w.cell_y[k]
@@ -337,7 +337,7 @@ class Navigator:
             best_score = -1e9
             for score, x, y, is_cover in scored[:3]:
                 z = w.terrain_height(x, y) + 4.5
-                if w.los_blocked((tr.pos[0], tr.pos[1], tr.pos[2] + 7.0), (x, y, z)):
+                if w.los_blocked_fast((tr.pos[0], tr.pos[1], tr.pos[2] + 7.0), (x, y, z)):
                     val = score + 1.6
                 elif math.hypot(tr.pos[0] - x, tr.pos[1] - y) < 70.0:
                     val = score - 0.8

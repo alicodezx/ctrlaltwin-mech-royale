@@ -15,6 +15,7 @@ import json
 import math
 import os
 import sys
+import time
 from typing import Dict, Iterable, List, Optional, Sequence, Set, Tuple
 
 Point3 = Tuple[float, float, float]
@@ -714,10 +715,16 @@ class WorldModel:
     def find_path(self, start: Point2, goal: Point2, danger: Optional[Dict[int, float]] = None,
                   zone: Optional[Tuple[float, float, float]] = None,
                   max_expand: int = 3000, avoid: Optional[Dict[int, float]] = None,
-                  now: float = 0.0) -> List[Point2]:
-        """Bounded A* over the 3 m grid. Returns world points, or [] when unreachable."""
+                  now: float = 0.0, time_budget: Optional[float] = None) -> List[Point2]:
+        """Bounded A* over the 3 m grid. Returns world points, or [] when unreachable.
+
+        `time_budget` is a wall-clock safety valve: on expiry the best partial path
+        found so far is returned, so a hard navigation case cannot blow the tick
+        budget.  The search itself stays deterministic when the budget is not hit.
+        """
         if not self.available:
             return [goal]
+        t_start = time.perf_counter() if time_budget is not None else 0.0
         sk = self.nearest_walkable(self.cell_index(*start))
         gk = self.nearest_walkable(self.cell_index(*goal), radius=12)
         if sk is None or gk is None:
@@ -753,6 +760,8 @@ class WorldModel:
                 continue
             closed[k] = 1
             expanded += 1
+            if time_budget is not None and not (expanded & 7) and time.perf_counter() - t_start >= time_budget:
+                break
             j = k // nx
             i = k - j * nx
             ax = abs(i - gx)
@@ -867,6 +876,7 @@ class WorldModel:
         danger: Dict[int, float] = {}
         cell = self.cell
         reach = int(radius / cell) + 1
+        r2 = radius * radius
         for x, y in points:
             ci = int((x - self.minx) / cell)
             cj = int((y - self.miny) / cell)
@@ -874,17 +884,20 @@ class WorldModel:
                 j = cj + dj
                 if j < 0 or j >= self.ny:
                     continue
-                for di in range(-reach, reach + 1):
-                    i = ci + di
-                    if i < 0 or i >= self.nx:
+                dy = self.miny + (j + 0.5) * cell - y
+                if dy * dy >= r2:
+                    continue
+                span = int(math.sqrt(r2 - dy * dy) / cell)
+                lo = max(0, ci - span)
+                hi = min(self.nx - 1, ci + span)
+                base = j * self.nx
+                for i in range(lo, hi + 1):
+                    dx = self.minx + (i + 0.5) * cell - x
+                    d2 = dx * dx + dy * dy
+                    if d2 >= r2:
                         continue
-                    px = self.minx + (i + 0.5) * cell
-                    py = self.miny + (j + 0.5) * cell
-                    d = math.hypot(px - x, py - y)
-                    if d >= radius:
-                        continue
-                    val = weight * (1.0 - d / radius)
-                    k = j * self.nx + i
+                    val = weight * (1.0 - math.sqrt(d2) / radius)
+                    k = base + i
                     if val > danger.get(k, 0.0):
                         danger[k] = val
         return danger
