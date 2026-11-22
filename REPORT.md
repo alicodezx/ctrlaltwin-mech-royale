@@ -28,13 +28,14 @@ match container is 1 CPU and may differ.
 | Protocol wrapper | unmodified | same file, byte-identical |
 | Entry point | `example_bot.py` | `bot.py` |
 
-Those v1 numbers are from three sequential checker runs after the final latency work. Two fixes
-mattered: hold/retreat points are cached for 2 s keyed on zone geometry and mode (no per-decision
-position churn) with fast cover-shortlist LOS, and A* now has an 8 ms wall-clock safety valve plus
-a 650-expansion cap, returning the best partial path. In-process, hold recomputes dropped from 26
-to 13 per replay and p99 from 17.8 ms to 3.6–6.8 ms; a synthetic static-position case that forces
-repeated replans went from p99 16–32 ms to 7.6 ms. No code path performs work proportional to
-match length.
+Those v1 numbers are from three sequential checker runs after the final latency work. A later
+standalone run on a loaded machine measured p99 9.3 / max 12.5 ms, still with 0 missed and 0 late;
+this desktop shows run-to-run variance of several milliseconds. Two fixes mattered: hold/retreat
+points are cached for 2 s keyed on zone geometry and mode (no per-decision position churn) with
+fast cover-shortlist LOS, and A* now has an 8 ms wall-clock safety valve plus a 650-expansion cap,
+returning the best partial path. In-process, hold recomputes dropped from 26 to 13 per replay and
+p99 from 17.8 ms to 3.6–6.8 ms; a synthetic static-position case that forces repeated replans went
+from p99 16–32 ms to 7.6 ms. No code path performs work proportional to match length.
 
 Unit-test performance case (synthetic 100-decision sequence with mech, projectiles, loot, crate,
 drop, shrinking zone, and a static position that forces stuck replanning):
